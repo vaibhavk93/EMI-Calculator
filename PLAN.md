@@ -1,7 +1,16 @@
 # Loan EMI + Exit Settlement (F&F) Android App — Research & Plan
 
-**Status:** Proposal for review. No app code written yet.
+**Status:** Plan agreed. Calculation core built and tested (73 tests green). Android UI not started.
 **Date:** 2026-10-05
+
+### Decisions taken
+
+| Decision | Choice |
+|---|---|
+| Primary user | **Both, employee-first** — consumer MVP, core kept reusable for an HR layer later |
+| Product thesis | **Runway is the hero screen** |
+| Platform | **Android only for now** (Compose native); core module keeps iOS open |
+| Build environment | **Unblock `dl.google.com`** so the APK builds in the cloud session |
 
 ---
 
@@ -118,18 +127,54 @@ Native is the default-correct choice here: Android-only brief, offline-first, no
 ### 3.3 Module layout
 
 ```
-:core-calc     ← PURE Kotlin/JVM. No Android deps. BigDecimal.
-               All formulas + 100% unit-tested. The crown jewel.
-:core-data     ← Room (SQLite) entities, DAOs, repositories
+:core-calc     ← PURE Kotlin/JVM. No Android deps. BigDecimal. The crown jewel.
+   core/       Money helpers (BigDecimal, scales, rounding)
+   core/loan/  EMI, amortisation, prepayment, rate resets, portfolio
+   core/fnf/   wage base, gratuity, leave encashment, notice, tax
+   core/calc/  scratch calculator (expression parser)
+   core/runway/payout vs obligations
+   core/session/history, notes, resume — models + store interfaces
+:core-data     ← Room (SQLite) implementations of the store interfaces
 :feature-loans ← loan list, add/edit, amortisation, prepayment compare
 :feature-fnf   ← F&F wizard, assumptions, statement, PDF export
+:feature-calc  ← scratch calculator with its history tape
 :feature-runway← THE unifying screen: payout vs obligations vs months of runway
 :app           ← single activity, Compose navigation, Material 3
 ```
 
 `:core-calc` being pure Kotlin is deliberate: it's testable in CI without an emulator, portable to iOS/web later, and **buildable in this cloud container today** (see §5).
 
-### 3.4 Why this ordering
+### 3.4 Scratch calculator, memory and resume
+
+Three capabilities added after the initial review, and worth saying why they are not
+feature creep:
+
+**Scratch calculator.** A generic arithmetic calculator is a commodity — the phone
+already has one. Its value *here* is that it sits next to the forms: you work out
+"12.5% of basic" or "what do these four allowances add up to", and the answer flows
+straight into the loan or settlement field instead of being retyped from another app.
+It uses the same `BigDecimal` arithmetic as everything else, so `0.1 + 0.2` is exactly
+`0.3`. It accepts what people actually type — `80,00,000` with Indian grouping, and the
+`×`/`÷` glyphs from phone keypads.
+
+**Memory, with delete.** Every interaction — calculation, loan, settlement, runway — is
+recorded with its *inputs*, not just its answer, so an entry can be reopened and edited
+rather than only read. Deletion is **reversible** (soft delete, then a retention sweep):
+a settlement takes twenty minutes to fill in, and losing one to a stray tap is not
+forgiven. Pinning both floats an entry to the top and protects it from delete and
+clear-all. Hard purge exists for when the user really means it.
+
+**Notes and resume.** Any entry takes a free-text note, which is what turns a list of
+bare numbers into something meaningful a month later ("this is the figure HR quoted on
+the call"). Separately, each flow keeps its own in-progress draft, so the app reopens
+exactly where it was left — including which field had focus. This matters most for the
+settlement wizard: it is long, people fill it in over several sittings, and an app that
+forgets halfway is an app they stop using.
+
+Both are declared as store *interfaces* in the pure-Kotlin core, so the rules are
+testable without a device; Room and DataStore back them in the app module.
+
+### 3.5 Why this ordering
 
 Per the decision framework — business growth → UX → platform scalability → ops → engineering simplicity:
 
@@ -148,6 +193,9 @@ Per the decision framework — business growth → UX → platform scalability �
 - Portfolio view: total EMI, total interest, debt-free date
 - F&F: unpaid salary, leave encashment, gratuity, notice recovery, **new ≥50% wage base**, tax exemptions, TDS estimate
 - **Runway screen** (payout ÷ monthly obligations)
+- **Scratch calculator** whose results feed the forms
+- **Memory**: every interaction saved with its inputs, reversible delete, pin, clear-all
+- **Notes** on any entry, and **resume where you left off** per flow
 - All assumptions visible and editable; formula shown next to every number
 - Local persistence; disclaimers
 
@@ -173,6 +221,34 @@ This cloud container **cannot build an Android app.** Verified, not assumed:
 | `services.gradle.org`, `plugins.gradle.org` | ✅ Reachable |
 
 Java 21 and Gradle 8.14.3 are installed.
+
+**What is built and green today** — `:core-calc`, 73 passing tests:
+
+| Area | Covered |
+|---|---|
+| EMI | Golden values, zero-interest, single instalment, input rejection |
+| Amortisation | Closes at exactly N instalments with zero balance across a 400-case sweep of principals, rates and tenures; principal reconciles to the amount borrowed |
+| Prepayment | Reduce-tenure beats reduce-EMI; earlier beats later; oversized prepayment cannot overpay |
+| Rate resets | Rate rise raises interest; holding EMI preserves tenure |
+| Wage base | 50% floor bites on allowance-heavy pay, dormant otherwise |
+| Gratuity | Golden value, ₹20L cap, non-vesting, the six-month rounding rule, fixed-term at 1 year |
+| Leave encashment | Each of the four s.10(10AA) limits binding in turn, lifetime cap net of prior claims |
+| Notice recovery | Shortfall, full service, over-service, and divisor sensitivity |
+| Settlement | Gross/deductions/tax/net reconcile; negative net when the employee owes money |
+| Income tax | Rebate ceiling, marginal relief, no-cliff sweep, monotonicity to ₹3cr, surcharge |
+| Calculator | Precedence, percent, unary minus, nesting, grouping separators, exact decimals, errors as values |
+| History | Ordering, filtering, notes add/replace/clear, reversible delete, pin protection, retention sweep |
+| Resume | Per-flow drafts, overwrite, scoped clear, editing an existing entry |
+
+Two findings worth recording from building it:
+
+- **`80,00,000` originally failed to parse.** Commas were skipped as whitespace, which
+  split it into three separate numbers. Grouping separators now have to sit *inside* a
+  number run. Caught by a test written from how people actually type.
+- **Marginal relief is granted on tax before cess.** So the all-in liability just above
+  ₹12L does rise slightly faster than the extra income — by the 4% cess on the relieved
+  amount. The no-cliff guarantee holds on the pre-cess figure, and the test asserts it
+  there. Worth showing in the UI, because it looks like a bug otherwise.
 
 **What this means practically:**
 - ✅ I can build, run and fully unit-test **`:core-calc`** here right now — which is where all the correctness risk lives
@@ -210,12 +286,27 @@ To unblock: open the cloud environment menu in the session title bar → **Edit*
 
 ---
 
-## 8. Open decisions (need your call before I build)
+## 8. Next steps
 
-1. **Primary user — employee-side consumer, or HR-side tool?** This is the biggest fork. It changes the data model (one person vs many employees), the UI, and whether there's a business model at all.
-2. **Do we accept the "Runway" thesis**, or keep two independent calculators under one roof?
-3. **Is iOS ever in scope?** Only affects whether the UI layer is Compose-native or Compose Multiplatform. The core module is unaffected either way.
-4. **Do you want `dl.google.com` unblocked** so the full APK builds here, or will you run the UI locally in Android Studio?
+All four opening questions are now settled (see the table at the top). Remaining work,
+in order:
+
+1. **Unblock `dl.google.com`** in the environment's network settings so the Android
+   modules can resolve AGP and Compose. Until then the UI cannot be compiled here.
+2. **`:core-data`** — Room implementations of `HistoryStore` and `ResumeStore`, plus
+   loan and settlement entities.
+3. **`:app` + feature modules** — Compose screens over the tested core.
+4. **Remote statutory config** — move `StatutoryConfig.DEFAULT` to a versioned JSON
+   file with a "rules as of" badge in the UI.
+5. **PDF/share export** for the settlement statement.
+
+### Still open, lower stakes
+
+- **Does the HR layer ever get built?** The core is kept reusable for it, but nothing
+  else is being designed for it yet. Revisit once the consumer MVP has been used in anger.
+- **Scratch calculator scope.** It is currently `+ − × ÷`, parentheses and postfix `%`.
+  Memory registers (M+/MR) and a running tape with per-line notes are deliberately not
+  in yet — say the word if you want them.
 
 ---
 

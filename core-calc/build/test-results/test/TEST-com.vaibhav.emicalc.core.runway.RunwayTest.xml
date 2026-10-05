@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vaibhav.emicalc.core.runway.RunwayTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-05T09:59:57.065Z" hostname="vm" time="0.04">
+  <properties/>
+  <testcase name="runway is settlement plus savings divided by monthly burn, floored" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.006"/>
+  <testcase name="the runway suggests the best use of the payout" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.007"/>
+  <testcase name="income covering the burn means the runway does not run out" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.002"/>
+  <testcase name="EMI-only runway is reported separately, for the worst case" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.004"/>
+  <testcase name="a lump sum never applies more than a loan actually owes" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.002"/>
+  <testcase name="snowball ranks by smallest balance instead" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.004"/>
+  <testcase name="months are floored, never rounded up" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.001"/>
+  <testcase name="the portfolio aggregates what single-loan calculators cannot" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.003"/>
+  <testcase name="avalanche ranks by interest actually saved, not by headline rate" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.003"/>
+  <testcase name="no loans and no payout degrade gracefully" classname="com.vaibhav.emicalc.core.runway.RunwayTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

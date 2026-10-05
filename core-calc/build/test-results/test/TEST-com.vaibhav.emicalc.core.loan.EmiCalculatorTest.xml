@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-05T09:59:56.921Z" hostname="vm" time="0.138">
+  <properties/>
+  <testcase name="principal repaid over the schedule equals the amount borrowed" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.009"/>
+  <testcase name="a zero-interest loan divides evenly and does not divide by zero" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.001"/>
+  <testcase name="prepaying earlier saves more than prepaying the same amount later" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.007"/>
+  <testcase name="a single-instalment loan is principal plus one month of interest" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.001"/>
+  <testcase name="80L at 8% over 240 months is 66,915 (published reference value)" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.002"/>
+  <testcase name="a rate rise increases total interest; holding EMI keeps the tenure" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.004"/>
+  <testcase name="a prepayment larger than the balance closes the loan without overpaying" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.001"/>
+  <testcase name="the schedule never exceeds the contracted tenure and closes at exactly zero" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.001"/>
+  <testcase name="closure holds across a wide spread of rates and tenures" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.095"/>
+  <testcase name="rejectsNonsenseInput()" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.003"/>
+  <testcase name="reducing tenure always saves more interest than reducing EMI" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.007"/>
+  <testcase name="50L at 8.5% over 240 months is 43,391 (published reference value)" classname="com.vaibhav.emicalc.core.loan.EmiCalculatorTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
