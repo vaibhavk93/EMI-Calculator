@@ -1,6 +1,6 @@
 # Loan EMI + Exit Settlement (F&F) Android App — Research & Plan
 
-**Status:** Plan agreed. Calculation core built and tested (73 tests green). Android UI not started.
+**Status:** Cores built and tested (104 tests green). Compose UI written but **not yet compiled** — see section 5.
 **Date:** 2026-10-05
 
 ### Decisions taken
@@ -10,7 +10,7 @@
 | Primary user | **Both, employee-first** — consumer MVP, core kept reusable for an HR layer later |
 | Product thesis | **Runway is the hero screen** |
 | Platform | **Android only for now** (Compose native); core module keeps iOS open |
-| Build environment | **Unblock `dl.google.com`** so the APK builds in the cloud session |
+| Build environment | **Unblock `dl.google.com`** so the APK builds in the cloud session (still blocked in the session this was written in — a running container keeps the egress policy it started with) |
 
 ---
 
@@ -222,7 +222,7 @@ This cloud container **cannot build an Android app.** Verified, not assumed:
 
 Java 21 and Gradle 8.14.3 are installed.
 
-**What is built and green today** — `:core-calc`, 73 passing tests:
+**What is built and green today** — `:core-calc` and `:core-ui`, 104 passing tests:
 
 | Area | Covered |
 |---|---|
@@ -239,8 +239,26 @@ Java 21 and Gradle 8.14.3 are installed.
 | Calculator | Precedence, percent, unary minus, nesting, grouping separators, exact decimals, errors as values |
 | History | Ordering, filtering, notes add/replace/clear, reversible delete, pin protection, retention sweep |
 | Resume | Per-flow drafts, overwrite, scoped clear, editing an existing entry |
+| Formatting | Indian lakh/crore grouping across 12 digit lengths, negatives, paise, compact form, tenures, rates |
+| Input parsing | `₹80,00,000`, `80L`, `1.5Cr`, `50k`, `20y`; empty distinguished from invalid; formatter/parser round-trip |
+| Calculator state | Live preview, errors only on `=`, continuing from an answer, operator replacement, negative operands, backspace, clear |
 
-Two findings worth recording from building it:
+**What is written but unverified** — `:app`. The Compose UI, Room persistence,
+navigation and view models are complete, but the Android Gradle Plugin and AndroidX
+could not be resolved, so **none of it has been compiled or run**. It was reviewed by
+inspection only: brace and paren balance checked across every file, unused imports and
+dead state removed, an ambiguous `PushPin` import aliased, a duplicated navigation route
+collapsed to one optional-argument route, column spacers corrected from `width` to
+`height`, and missing launcher icon resources added (adaptive-only, which minSdk 26
+allows). Expect the first real build to still find things.
+
+To keep both environments working, **`:app` is included only when an Android SDK is
+present** (`ANDROID_HOME`, `ANDROID_SDK_ROOT` or `sdk.dir`). The Android Gradle Plugin
+fails at configuration time rather than gracefully, and without this it took the
+pure-Kotlin modules down with it — `apply false` is not enough, since even that resolves
+the plugin artifact.
+
+Three findings worth recording from building it:
 
 - **`80,00,000` originally failed to parse.** Commas were skipped as whitespace, which
   split it into three separate numbers. Grouping separators now have to sit *inside* a
@@ -248,7 +266,10 @@ Two findings worth recording from building it:
 - **Marginal relief is granted on tax before cess.** So the all-in liability just above
   ₹12L does rise slightly faster than the extra income — by the 4% cess on the relieved
   amount. The no-cliff guarantee holds on the pre-cess figure, and the test asserts it
-  there. Worth showing in the UI, because it looks like a bug otherwise.
+  there. The UI says so on the tax card, because it looks like a bug otherwise.
+- **The calculator formatted its answer differently from its own live preview**, so a
+  decimal result lost its digit grouping the instant `=` was pressed. Both paths now go
+  through one formatter.
 
 **What this means practically:**
 - ✅ I can build, run and fully unit-test **`:core-calc`** here right now — which is where all the correctness risk lives
@@ -293,12 +314,17 @@ in order:
 
 1. **Unblock `dl.google.com`** in the environment's network settings so the Android
    modules can resolve AGP and Compose. Until then the UI cannot be compiled here.
-2. **`:core-data`** — Room implementations of `HistoryStore` and `ResumeStore`, plus
-   loan and settlement entities.
-3. **`:app` + feature modules** — Compose screens over the tested core.
+2. **Compile `:app` once and fix the fallout.** This is the real next step. Open it in
+   Android Studio, or run `./gradlew :app:assembleDebug` in a session where
+   `dl.google.com` is reachable. Also pin the Android dependency versions in
+   `gradle/libs.versions.toml`, which were chosen by hand rather than resolved.
+3. **Run it on a device** and check the two screens that carry the product: Runway, and
+   the settlement statement with its working shown.
 4. **Remote statutory config** — move `StatutoryConfig.DEFAULT` to a versioned JSON
-   file with a "rules as of" badge in the UI.
+   file. It is currently compiled in, so the next Budget would need an app release.
 5. **PDF/share export** for the settlement statement.
+6. **Screenshot and instrumentation tests** once the UI compiles — nothing in `:app` is
+   covered today.
 
 ### Still open, lower stakes
 

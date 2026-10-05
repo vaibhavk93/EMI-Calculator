@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+      History and drafts are backed up so a phone upgrade does not lose a
+      half-finished settlement. Nothing here leaves the user's own backup.
+    -->
+    <include domain="database" path="emicalc.db" />
+    <include domain="sharedpref" path="." />
+</full-backup-content>
